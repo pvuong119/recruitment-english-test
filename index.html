@@ -1,7 +1,108 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Speaking recorder</title><style>
-body{font:16px system-ui;background:#f3f6fa;color:#172958;margin:0;padding:20px}main{max-width:650px;margin:auto;background:white;padding:24px;border-radius:16px}button{font:inherit;padding:10px 14px;margin:4px;border:1px solid #172958;background:#172958;color:white;border-radius:8px;cursor:pointer}button:disabled{opacity:.4;cursor:default}#start,#delete{background:#b91c1c}#timer{font-size:42px;font-weight:700;font-variant-numeric:tabular-nums}canvas{width:100%;height:64px;background:#eef2f8;border-radius:8px}audio{width:100%;margin:12px 0}p{line-height:1.5}</style></head><body><main><h1>Speaking recorder</h1><p id="prompt">Connecting to the test…</p><div id="lines"></div><p id="remaining"></p><div id="timer">00:00</div><canvas id="wave" width="600" height="64"></canvas><div><button id="start" disabled>Start</button><button id="pause" disabled>Pause</button><button id="resume" disabled>Resume</button><button id="stop" disabled>Stop</button><button id="delete" disabled>Delete</button><button id="again" disabled>Re-record</button></div><audio id="audio" controls hidden></audio><p id="status" role="status">Connecting…</p><button id="use" disabled>Save recording & return</button><button id="cancel">Cancel</button><p>Microphone audio stays in this browser until you save it to the test. Recruitment receives it when you submit the test.</p></main><script>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Speaking recorder</title><style>/* ================= OCEAN THEME · view from the seabed ================= */
+:root{color-scheme:light}
+html,body{margin:0;min-height:100%;background:#04223d}
+.sea{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;contain:strict;
+  background:linear-gradient(180deg,#aee8f1 0%,#58c3db 9%,#1d93bd 24%,#0e6c9a 44%,#08507c 64%,#053559 82%,#03203a 100%)}
+/* sun, slanting from the upper left */
+.sea-sun{position:absolute;left:-18vmax;top:-34vmax;width:78vmax;height:78vmax;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,251,228,1) 0%,rgba(255,243,196,.75) 9%,rgba(214,246,250,.35) 26%,rgba(160,228,242,0) 58%);
+  animation:seaGlow 9s ease-in-out infinite;will-change:opacity}
+/* light shafts entering at an angle */
+.sea-rays{position:absolute;left:-30vw;top:-20vh;width:140vw;height:150vh;transform-origin:0 0;transform:rotate(-18deg);
+  background:repeating-linear-gradient(90deg,rgba(255,255,255,0) 0 46px,rgba(255,252,232,.16) 52px 68px,rgba(255,255,255,0) 78px 132px);
+  -webkit-mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.55) 38%,transparent 78%);mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.55) 38%,transparent 78%);
+  filter:blur(5px);animation:seaShaft 14s ease-in-out infinite alternate;will-change:transform,opacity}
+.sea-rays.b{opacity:.65;transform:rotate(-24deg);animation-duration:21s;animation-direction:alternate-reverse;
+  background:repeating-linear-gradient(90deg,rgba(255,255,255,0) 0 80px,rgba(220,250,255,.13) 88px 98px,rgba(255,255,255,0) 110px 190px)}
+/* rippling water surface */
+.sea-surface{position:absolute;left:0;right:0;top:0;height:20vh;overflow:hidden;
+  -webkit-mask-image:linear-gradient(#000 30%,transparent);mask-image:linear-gradient(#000 30%,transparent)}
+.sea-surface i{position:absolute;left:0;top:0;width:200%;height:100%;opacity:.55;mix-blend-mode:screen;
+  background:
+    radial-gradient(ellipse 70px 12px at 25% 30%,rgba(255,255,255,.75),transparent 70%),
+    radial-gradient(ellipse 110px 16px at 60% 18%,rgba(255,255,255,.55),transparent 70%),
+    radial-gradient(ellipse 80px 10px at 82% 52%,rgba(255,255,255,.6),transparent 70%),
+    radial-gradient(ellipse 50px 8px at 40% 66%,rgba(255,255,255,.45),transparent 70%);
+  background-size:300px 110px,380px 130px,260px 100px,210px 90px;animation:seaRipple 26s linear infinite;will-change:transform}
+.sea-surface i+i{opacity:.35;animation-duration:38s;animation-direction:reverse;background-size:340px 120px,280px 140px,320px 90px,240px 80px}
+.sea-wave{position:absolute;left:0;top:7vh;width:200%;height:40px;opacity:.35;animation:seaRipple 18s linear infinite;will-change:transform}
+/* soft caustic light on the water */
+.sea-caustic{position:absolute;inset:-10% -10% 30% -10%;opacity:.12;mix-blend-mode:screen;
+  background:radial-gradient(circle at 30% 30%,#fff 0 1.5px,transparent 38px),radial-gradient(circle at 70% 70%,#fff 0 1.5px,transparent 46px);
+  background-size:170px 150px,230px 200px;animation:seaDrift 40s linear infinite;will-change:transform}
+.sea-deep{position:absolute;left:0;right:0;bottom:0;height:45vh;background:linear-gradient(transparent,rgba(1,12,24,.6))}
+/* tiny bubbles */
+.sea-b{position:absolute;bottom:-30px;left:var(--x);width:var(--s);height:var(--s);border-radius:50%;opacity:0;
+  background:radial-gradient(circle at 32% 30%,rgba(255,255,255,.95),rgba(255,255,255,.2) 42%,rgba(255,255,255,.04) 72%);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.4);animation:seaRise var(--d) linear var(--dl) infinite;will-change:transform,opacity}
+/* minimal fish silhouettes, far away */
+.sea-fish{position:absolute;left:-80px;top:var(--y);width:var(--w);opacity:var(--o);color:#062a47;animation:seaSwim var(--d) linear var(--dl) infinite;will-change:transform}
+.sea-fish svg{display:block;width:100%;height:auto;animation:seaBob 3.2s ease-in-out infinite}
+.sea-fish.l{left:auto;right:-80px;animation-name:seaSwimL}
+.sea-fish.l svg{transform:scaleX(-1);animation-name:seaBobL}
+@keyframes seaGlow{0%,100%{opacity:.9}50%{opacity:1}}
+@keyframes seaShaft{0%{transform:rotate(-18deg) translateX(0);opacity:.85}100%{transform:rotate(-14deg) translateX(4vw);opacity:1}}
+@keyframes seaRipple{to{transform:translateX(-50%)}}
+@keyframes seaDrift{to{transform:translate(-170px,120px)}}
+@keyframes seaRise{0%{transform:translate(0,0);opacity:0}8%{opacity:.85}50%{transform:translate(12px,-55vh)}92%{opacity:.6}100%{transform:translate(-6px,-110vh);opacity:0}}
+@keyframes seaSwim{to{transform:translateX(calc(100vw + 160px))}}
+@keyframes seaSwimL{to{transform:translateX(calc(-100vw - 160px))}}
+@keyframes seaBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes seaBobL{0%,100%{transform:scaleX(-1) translateY(0)}50%{transform:scaleX(-1) translateY(-6px)}}
+@media (max-width:700px){.sea-fish{display:none}.sea-rays.b{display:none}}
+@media (prefers-reduced-motion:reduce){.sea *,.sea *::before{animation:none !important}.sea-b{display:none}}
+
+*{box-sizing:border-box}
+body{font:16px/1.55 system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;color:#0f2236;padding:20px 14px 40px;-webkit-font-smoothing:antialiased}
+main{position:relative;z-index:1;max-width:660px;margin:0 auto;padding:28px;border-radius:26px;background:rgba(255,255,255,.93);border:1px solid rgba(255,255,255,.75);
+  -webkit-backdrop-filter:blur(16px) saturate(1.2);backdrop-filter:blur(16px) saturate(1.2);box-shadow:0 34px 70px -34px rgba(1,20,40,.85),inset 0 1px 0 #fff;animation:in .55s cubic-bezier(.22,.61,.36,1) both}
+@keyframes in{from{opacity:0;transform:translateY(16px)}}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+h1{margin:0;font-size:24px;letter-spacing:-.02em}
+#remaining{margin:0;padding:6px 12px;border-radius:999px;background:#eef6fb;color:#1479a8;font-size:13.5px;font-weight:700;font-variant-numeric:tabular-nums}
+#remaining:empty{display:none}
+.prompt{margin:16px 0 4px;padding:16px 18px;border-radius:18px;background:linear-gradient(180deg,#f3f9fd,#eaf4fa);border:1px solid #d3e6f1}
+#prompt{margin:0;font-size:16.5px;font-weight:600;color:#0f2236}
+#lines{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+#lines:empty{display:none}
+.stage{position:relative;margin:18px 0 6px;padding:22px 20px 18px;border-radius:22px;text-align:center;
+  background:linear-gradient(180deg,#0b4f7a,#08385b);color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.15)}
+.dot{display:inline-flex;align-items:center;gap:8px;font-size:12.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.75)}
+.dot::before{content:"";width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.45)}
+body[data-state=recording] .dot::before{background:#ff5d5d;animation:blink 1s ease-in-out infinite}
+body[data-state=paused] .dot::before{background:#ffc857}
+body[data-state=ready] .dot::before{background:#4ade80}
+@keyframes blink{50%{opacity:.25}}
+#timer{margin:6px 0 10px;font-size:52px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1}
+canvas{display:block;width:100%;height:64px;border-radius:14px;background:rgba(255,255,255,.08)}
+.controls{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:16px}
+.tools{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
+button{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:10px 12px;border:0;border-radius:14px;font:inherit;font-weight:700;font-size:15px;cursor:pointer;
+  color:#0f2236;background:#fff;box-shadow:inset 0 0 0 1.5px #c9dbe8;transition:transform .2s cubic-bezier(.22,.61,.36,1),box-shadow .2s,background-color .2s,opacity .2s}
+button svg{width:18px;height:18px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+button:not(:disabled):hover{transform:translateY(-2px);box-shadow:inset 0 0 0 1.5px #1479a8,0 10px 20px -14px rgba(5,40,75,.7)}
+button:disabled{opacity:.38;cursor:default}
+.stage button{background:rgba(255,255,255,.1);color:#fff;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.22)}
+.stage button:not(:disabled):hover{background:rgba(255,255,255,.18);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.5)}
+#start{background:linear-gradient(135deg,#ef4444,#c81e1e);box-shadow:0 12px 22px -12px rgba(200,30,30,.9)}
+#start svg{fill:#fff}
+#stop:not(:disabled){background:#fff;color:#08385b}
+#delete{color:#c81e1e}
+#play{color:#1479a8}
+.chip{min-height:38px;padding:6px 14px;font-size:14px;border-radius:999px;color:#1479a8}
+audio{display:block;width:100%;margin:14px 0 0;height:44px;border-radius:12px}
+audio[hidden]{display:none}
+#status{margin:14px 0 0;padding:10px 14px;border-radius:12px;background:#f2f7fb;color:#33475c;font-size:14.5px;font-weight:600}
+.foot{display:grid;grid-template-columns:2fr 1fr;gap:10px;margin-top:16px}
+#use{background:linear-gradient(135deg,#172958,#1f5a8c);color:#fff;box-shadow:0 12px 22px -12px rgba(5,40,75,.9)}
+#use svg{stroke:#fff}
+#cancel{color:#53657a}
+.note{margin:14px 0 0;color:#53657a;font-size:13.5px;text-align:center}
+@media (max-width:560px){main{padding:20px 16px;border-radius:22px}.tools{gap:8px}.tools button{font-size:14px;padding:8px 6px;gap:6px;white-space:nowrap}.controls{grid-template-columns:repeat(2,1fr)}#timer{font-size:44px}.foot{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important}}
+</style></head><body data-state="idle"><div class="sea" aria-hidden="true"><div class="sea-sun"></div><div class="sea-rays"></div><div class="sea-rays b"></div><div class="sea-surface"><i></i><i></i><svg class="sea-wave" viewBox="0 0 1200 40" preserveAspectRatio="none" aria-hidden="true"><path d="M0 20 Q75 5 150 20 T300 20 T450 20 T600 20 T750 20 T900 20 T1050 20 T1200 20" fill="none" stroke="rgba(255,255,255,.7)" stroke-width="1.2"/></svg></div><div class="sea-caustic"></div><div class="sea-deep"></div><span class="sea-fish" style="--y:38vh;--w:46px;--o:.22;--d:58s;--dl:-10s"><svg viewBox="0 0 60 24" aria-hidden="true"><path fill="currentColor" d="M2 12c8-9 24-11 38-4l9-6-2 10 2 10-9-6C26 23 10 21 2 12Z"/></svg></span><span class="sea-fish l" style="--y:52vh;--w:34px;--o:.16;--d:72s;--dl:-40s"><svg viewBox="0 0 60 24" aria-hidden="true"><path fill="currentColor" d="M2 12c8-9 24-11 38-4l9-6-2 10 2 10-9-6C26 23 10 21 2 12Z"/></svg></span><span class="sea-fish" style="--y:64vh;--w:28px;--o:.14;--d:85s;--dl:-55s"><svg viewBox="0 0 60 24" aria-hidden="true"><path fill="currentColor" d="M2 12c8-9 24-11 38-4l9-6-2 10 2 10-9-6C26 23 10 21 2 12Z"/></svg></span><span class="sea-fish l" style="--y:30vh;--w:22px;--o:.12;--d:95s;--dl:-5s"><svg viewBox="0 0 60 24" aria-hidden="true"><path fill="currentColor" d="M2 12c8-9 24-11 38-4l9-6-2 10 2 10-9-6C26 23 10 21 2 12Z"/></svg></span><span class="sea-b" style="--x:60%;--s:12px;--d:26s;--dl:-14s"></span><span class="sea-b" style="--x:60%;--s:12px;--d:23s;--dl:-6s"></span><span class="sea-b" style="--x:26%;--s:12px;--d:21s;--dl:-20s"></span><span class="sea-b" style="--x:81%;--s:6px;--d:15s;--dl:-14s"></span><span class="sea-b" style="--x:41%;--s:6px;--d:15s;--dl:-17s"></span><span class="sea-b" style="--x:91%;--s:4px;--d:23s;--dl:-12s"></span><span class="sea-b" style="--x:60%;--s:13px;--d:24s;--dl:-5s"></span><span class="sea-b" style="--x:82%;--s:4px;--d:22s;--dl:-2s"></span><span class="sea-b" style="--x:10%;--s:4px;--d:17s;--dl:-7s"></span><span class="sea-b" style="--x:79%;--s:4px;--d:26s;--dl:-14s"></span><span class="sea-b" style="--x:44%;--s:11px;--d:23s;--dl:-26s"></span><span class="sea-b" style="--x:28%;--s:12px;--d:17s;--dl:-20s"></span><span class="sea-b" style="--x:40%;--s:11px;--d:14s;--dl:-21s"></span><span class="sea-b" style="--x:13%;--s:11px;--d:24s;--dl:-8s"></span></div><main><div class="top"><h1>Speaking recorder</h1><p id="remaining"></p></div><div class="prompt"><p id="prompt">Connecting to the test…</p><div id="lines"></div></div><div class="stage"><span class="dot" aria-hidden="true">Microphone</span><div id="timer">00:00</div><canvas id="wave" width="600" height="64"></canvas><div class="controls"><button id="start" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6" fill="currentColor" stroke="none"/></svg><span>Start</span></button><button id="pause" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6v12M15 6v12"/></svg><span>Pause</span></button><button id="resume" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10-6.5z" fill="currentColor"/></svg><span>Resume</span></button><button id="stop" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor" stroke="none"/></svg><span>Stop</span></button></div></div><audio id="audio" controls hidden></audio><div class="tools"><button id="play" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4M8 7v10M12 4v16M16 8v8M20 11v2"/></svg><span>Playback</span></button><button id="delete" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/></svg><span>Delete</span></button><button id="again" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4h4"/></svg><span>Re-record</span></button></div><p id="status" role="status">Connecting…</p><div class="foot"><button id="use" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg><span>Save recording &amp; return</span></button><button id="cancel">Cancel</button></div><p class="note">Microphone audio stays in this browser until you save it to the test. Recruitment receives it when you submit the test.</p></main><script>
 'use strict';const $=id=>document.getElementById(id), nonce=location.hash.slice(1);let parentOrigin='', deadline=0, rec, stream, chunks=[], blob, url, ctx, analyser, started=0, elapsed=0, sec=0, expired=false, sent=false, busy=false, cancelled=false;
-function status(s){$('status').textContent=s}function controls(){const state=rec?.state||'inactive', ready=!!deadline&&!expired&&!sent&&!busy;$('start').disabled=!ready||state!=='inactive'||!!blob;$('pause').disabled=!ready||state!=='recording';$('resume').disabled=!ready||state!=='paused';$('stop').disabled=busy||state==='inactive'||sent;$('delete').disabled=!ready||!blob||state!=='inactive';$('again').disabled=$('delete').disabled;$('use').disabled=!blob||state!=='inactive'||sent||busy;}
+function status(s){$('status').textContent=s}function controls(){const state=rec?.state||'inactive', ready=!!deadline&&!expired&&!sent&&!busy;$('start').disabled=!ready||state!=='inactive'||!!blob;$('pause').disabled=!ready||state!=='recording';$('resume').disabled=!ready||state!=='paused';$('stop').disabled=busy||state==='inactive'||sent;$('delete').disabled=!ready||!blob||state!=='inactive';$('again').disabled=$('delete').disabled;$('use').disabled=!blob||state!=='inactive'||sent||busy;$('play').disabled=!blob||state!=='inactive';document.body.dataset.state=state==='inactive'?(blob?'ready':'idle'):state;}
 function format(s){return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}
 function cleanup(){stream?.getTracks().forEach(t=>t.stop());stream=null;if(ctx){ctx.close().catch(()=>{});ctx=null;}analyser=null;}
 function reset(){if(url)URL.revokeObjectURL(url);url=null;blob=null;sec=0;elapsed=0;$('audio').removeAttribute('src');$('audio').hidden=true;controls();}
@@ -9,9 +110,9 @@ async function start(){if(busy||expired||!deadline)return;busy=true;controls();t
 function stop(){if(rec&&rec.state!=='inactive'){if(rec.state==='recording')elapsed+=Date.now()-started;sec=Math.round(elapsed/1000);busy=true;rec.stop();controls();}}
 function send(){if(!blob||sent||cancelled)return;const ext=blob.type.includes('mp4')?'m4a':blob.type.includes('ogg')?'ogg':'webm';if(blob.size>10*1024*1024){status('Recording is too large.');return;}sent=true;controls();status('Returning recording to your test…');window.opener.postMessage({type:'recording',nonce,blob,ext,seconds:sec},parentOrigin);setTimeout(()=>{if(sent){sent=false;controls();status('No confirmation yet. Keep the test open and retry.');}},2500)}
 function expire(){if(expired)return;expired=true;if(rec&&rec.state!=='inactive')stop();else if(blob)send();else status('Speaking time expired.');controls()}
-$('start').onclick=start;$('pause').onclick=()=>{if(rec?.state==='recording'){elapsed+=Date.now()-started;rec.pause();status('Paused');controls()}};$('resume').onclick=()=>{if(rec?.state==='paused'){started=Date.now();rec.resume();status('Recording…');controls()}};$('stop').onclick=stop;$('delete').onclick=()=>{reset();status('Recording deleted.')};$('again').onclick=()=>{reset();start()};$('use').onclick=send;$('cancel').onclick=()=>{cancelled=true;stop();cleanup();if(parentOrigin)window.opener?.postMessage({type:'cancel',nonce},parentOrigin);window.close()};
-window.addEventListener('message',e=>{if(e.source!==window.opener||!e.data||e.data.nonce!==nonce)return;const d=e.data;if(d.type==='config'&&!parentOrigin){if(!/^https:\/\/[a-z0-9.-]+\.googleusercontent\.com$/.test(e.origin)&&e.origin!=='https://script.google.com')return;parentOrigin=e.origin;deadline=Number(d.deadline);$('prompt').textContent=String(d.prompt||'');for(const [i,line] of (d.lines||[]).entries()){const b=document.createElement('button');b.textContent='Play customer line '+(i+1);let plays=0;b.onclick=()=>{if(plays>=2)return;plays++;let u=new SpeechSynthesisUtterance(line);u.lang='en-US';u.rate=.9;speechSynthesis.cancel();speechSynthesis.speak(u);if(plays>=2)b.disabled=true};$('lines').append(b)}const q=document.createElement('button');q.textContent='Listen to question';let n=0;q.onclick=()=>{if(n++>=2)return;let u=new SpeechSynthesisUtterance(d.prompt);u.lang='en-US';u.rate=.9;speechSynthesis.cancel();speechSynthesis.speak(u);if(n>=2)q.disabled=true};$('lines').prepend(q);status('Ready. Click Start.');controls();}else if(e.origin===parentOrigin&&d.type==='expire')expire();else if(e.origin===parentOrigin&&d.type==='ack'){status('Saved. Return to the test.');window.close();}});
+$('start').onclick=start;$('pause').onclick=()=>{if(rec?.state==='recording'){elapsed+=Date.now()-started;rec.pause();status('Paused');controls()}};$('resume').onclick=()=>{if(rec?.state==='paused'){started=Date.now();rec.resume();status('Recording…');controls()}};$('stop').onclick=stop;$('delete').onclick=()=>{reset();status('Recording deleted.')};$('again').onclick=()=>{reset();start()};$('use').onclick=send;$('play').onclick=()=>{const a=$('audio');if(!a.src)return;if(a.paused){a.play();}else{a.pause();}};$('audio').onplay=()=>{$('play').querySelector('span').textContent='Pause playback'};$('audio').onpause=$('audio').onended=()=>{$('play').querySelector('span').textContent='Playback'};$('cancel').onclick=()=>{cancelled=true;stop();cleanup();if(parentOrigin)window.opener?.postMessage({type:'cancel',nonce},parentOrigin);window.close()};
+window.addEventListener('message',e=>{if(e.source!==window.opener||!e.data||e.data.nonce!==nonce)return;const d=e.data;if(d.type==='config'&&!parentOrigin){if(!/^https:\/\/[a-z0-9.-]+\.googleusercontent\.com$/.test(e.origin)&&e.origin!=='https://script.google.com')return;parentOrigin=e.origin;deadline=Number(d.deadline);$('prompt').textContent=String(d.prompt||'');for(const [i,line] of (d.lines||[]).entries()){const b=document.createElement('button');b.className='chip';b.textContent='Play customer line '+(i+1);let plays=0;b.onclick=()=>{if(plays>=2)return;plays++;let u=new SpeechSynthesisUtterance(line);u.lang='en-US';u.rate=.9;speechSynthesis.cancel();speechSynthesis.speak(u);if(plays>=2)b.disabled=true};$('lines').append(b)}const q=document.createElement('button');q.className='chip';q.textContent='Listen to question';let n=0;q.onclick=()=>{if(n++>=2)return;let u=new SpeechSynthesisUtterance(d.prompt);u.lang='en-US';u.rate=.9;speechSynthesis.cancel();speechSynthesis.speak(u);if(n>=2)q.disabled=true};$('lines').prepend(q);status('Ready. Click Start.');controls();}else if(e.origin===parentOrigin&&d.type==='expire')expire();else if(e.origin===parentOrigin&&d.type==='ack'){status('Saved. Return to the test.');window.close();}});
 const ready=setInterval(()=>{if(parentOrigin){clearInterval(ready);return;}if(window.opener&&nonce)window.opener.postMessage({type:'ready',nonce},'*');else status('Open this recorder from your recruitment test.');},400);
-setInterval(()=>{if(deadline){const left=Math.max(0,Math.ceil((deadline-Date.now())/1000));$('remaining').textContent='Speaking time remaining: '+format(left);if(!left)expire();}const t=rec?.state==='recording'?elapsed+Date.now()-started:elapsed;$('timer').textContent=format(Math.floor(t/1000));const c=$('wave'),g=c.getContext('2d');g.clearRect(0,0,c.width,c.height);g.fillStyle='#172958';if(analyser&&rec?.state==='recording'){const a=new Uint8Array(analyser.frequencyBinCount);analyser.getByteFrequencyData(a);for(let i=0;i<60;i++){const h=Math.max(2,a[i]/255*60);g.fillRect(i*10,(64-h)/2,5,h)}}else g.fillRect(0,31,600,2);},100);
+setInterval(()=>{if(deadline){const left=Math.max(0,Math.ceil((deadline-Date.now())/1000));$('remaining').textContent='Speaking time remaining: '+format(left);if(!left)expire();}const t=rec?.state==='recording'?elapsed+Date.now()-started:elapsed;$('timer').textContent=format(Math.floor(t/1000));const c=$('wave'),g=c.getContext('2d');g.clearRect(0,0,c.width,c.height);g.fillStyle='#1479a8';if(analyser&&rec?.state==='recording'){const a=new Uint8Array(analyser.frequencyBinCount);analyser.getByteFrequencyData(a);for(let i=0;i<60;i++){const h=Math.max(3,a[i]/255*60);g.fillRect(i*10+2,(64-h)/2,6,h)}}else g.fillRect(0,31,600,2);},100);
 window.addEventListener('pagehide',cleanup);
 </script></body></html>
