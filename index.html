@@ -1,1 +1,165 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Speaking Test Recorder</title>
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #f4f6fa;
+  padding: 30px 15px;
+}
+.card {
+  max-width: 600px;
+  margin: auto;
+  background: white;
+  padding: 30px;
+  border-radius: 16px;
+  box-shadow: 0 5px 25px #0001;
+}
+h1 { color: #172958; }
+button {
+  border: 0;
+  border-radius: 8px;
+  padding: 14px 20px;
+  margin: 5px;
+  color: white;
+  cursor: pointer;
+  font-size: 15px;
+}
+#start { background: #dc2626; }
+#stop { background: #172958; }
+button:disabled { opacity: .4; }
+#timer {
+  font-size: 40px;
+  font-weight: bold;
+  margin: 20px 0;
+}
+audio {
+  width: 100%;
+  margin-top: 20px;
+}
+#status { color: #64748b; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1>Speaking Test</h1>
+  <p>Texas Glass Door & USA Cabinets Outlet</p>
+  <hr>
+
+  <h3>Microphone Recording</h3>
+  <p>Click Start Recording and speak clearly.</p>
+
+  <div id="timer">00:00</div>
+
+  <button id="start">● Start Recording</button>
+  <button id="stop" disabled>■ Stop Recording</button>
+
+  <p id="status">Ready to record.</p>
+
+  <audio id="playback" controls hidden></audio>
+</div>
+
+<script>
+let recorder;
+let stream;
+let chunks = [];
+let timer;
+let seconds = 0;
+let audioBlob;
+let audioUrl;
+
+const start = document.getElementById('start');
+const stop = document.getElementById('stop');
+const status = document.getElementById('status');
+const playback = document.getElementById('playback');
+
+function updateTimer() {
+  const m = String(Math.floor(seconds / 60))
+    .padStart(2, '0');
+  const s = String(seconds % 60)
+    .padStart(2, '0');
+
+  document.getElementById('timer')
+    .textContent = m + ':' + s;
+}
+
+start.onclick = async () => {
+  start.disabled = true;
+
+  try {
+    stream = await navigator.mediaDevices
+      .getUserMedia({ audio: true });
+
+    recorder = new MediaRecorder(stream);
+    chunks = [];
+    seconds = 0;
+
+    updateTimer();
+    playback.hidden = true;
+
+    recorder.ondataavailable = e => {
+      if (e.data.size > 0) chunks.push(e.data);
+    };
+
+    recorder.onstop = () => {
+      clearInterval(timer);
+
+      audioBlob = new Blob(chunks, {
+        type: recorder.mimeType
+      });
+
+      if (audioUrl) URL.revokeObjectURL(audioUrl);
+
+      audioUrl = URL.createObjectURL(audioBlob);
+      playback.src = audioUrl;
+      playback.hidden = false;
+
+      stream.getTracks().forEach(t => t.stop());
+
+      status.textContent = 'Recording completed.';
+      start.disabled = false;
+      stop.disabled = true;
+    };
+
+    recorder.start();
+
+    status.textContent = 'Recording...';
+    stop.disabled = false;
+
+    timer = setInterval(() => {
+      seconds++;
+      updateTimer();
+
+      if (seconds >= 540 &&
+          recorder.state === 'recording') {
+        recorder.stop();
+      }
+    }, 1000);
+
+  } catch (error) {
+    if (stream) {
+      stream.getTracks().forEach(t => t.stop());
+    }
+
+    status.textContent =
+      'Microphone error: ' + error.message;
+
+    start.disabled = false;
+  }
+};
+
+stop.onclick = () => {
+  if (recorder && recorder.state === 'recording') {
+    recorder.stop();
+    stop.disabled = true;
+  }
+};
+</script>
+
+</body>
+</html>
